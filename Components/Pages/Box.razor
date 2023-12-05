@@ -71,6 +71,7 @@
 
     private async Task OnSubmit()
     {
+        if (string.IsNullOrEmpty(currentMessage)) return;
         try
         {
             await storageService.MakeSuggestion(currentMessage, boxId);

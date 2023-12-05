@@ -1,0 +1,98 @@
+﻿@page "/b/{boxId}"
+@implements IDisposable 
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using SuggestionBox.Services
+
+<div class="row">
+    <div class="col text-center">
+        <h1 class="pb-1 pt-1">Suggestion Box</h1>
+        <h5 class="text-muted">@boxId on @ComponentInstance.ToString()</h5>
+        <hr>
+    </div>
+</div>
+<div class="row">
+<div class="col-4 text-center">
+    <form @onsubmit=OnSubmit>
+        <div class="card">
+            <div class="card-header">
+                Make A Suggestion
+            </div>
+            <div class="card-body">
+                    <textarea rows="5" class="form-control" @bind=currentMessage @bind:event="oninput" />
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3">@errorMessage</div>
+                }
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" type="submit">Submit</button>
+            </div>
+        </div>
+    </form>
+</div>
+<div class="col-8">
+    @foreach(var suggestion in Suggestions) {
+        <div class="card mb-3">
+            <div class="card-body">
+                @suggestion.Message
+            </div>
+        </div>
+    }
+</div>
+</div>
+
+@code {
+    private Guid ComponentInstance { get; set; } = Guid.NewGuid();
+    [Inject]
+    public StorageService storageService { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "boxId")]
+    public string boxId { get; set; }
+
+    private List<Suggestion> Suggestions { get; set; } = new List<Suggestion> { };
+    private string _currentMessage;
+    private string currentMessage
+    {
+        get => _currentMessage;
+        set 
+        {
+            errorMessage = value != string.Empty ? "" : errorMessage;
+            _currentMessage = value;
+        }
+    }
+    private string errorMessage { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        Suggestions = (await storageService.GetSuggestions(boxId)).ToList();
+        storageService.SuggestionMade += OnSuggestion;
+    }
+
+    private async Task OnSubmit()
+    {
+        try
+        {
+            await storageService.MakeSuggestion(currentMessage, boxId);
+        }
+        catch (InvalidDataException dataEx)
+        {
+            errorMessage = dataEx.Message;
+        }
+        currentMessage = string.Empty;
+    }
+
+    public void OnSuggestion(Suggestion suggestion)
+    {
+        Console.WriteLine("SuggestionEvent Received: " + ComponentInstance.ToString());
+        if (suggestion.PartitionKey.Equals(boxId, StringComparison.OrdinalIgnoreCase))
+        {
+            Suggestions.Add(suggestion);
+            this.InvokeAsync(() => StateHasChanged());
+        }
+    }
+    public void Dispose()
+    {
+        storageService.SuggestionMade -= OnSuggestion;   
+    }
+}

@@ -1,0 +1,28 @@
+﻿@page "/"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<div class="col text-center">
+    <h1 class="pb-5 pt-5">Suggestion Box</h1>
+    <h5 class="pb-5">Realtime anonymous suggestion boxes .. what could possibly go wrong with that?</h5>
+    
+    <p>
+        <button @onclick="BtnOpenBox" class="btn btn-primary btn-lg">Open a Box!</button>
+    </p>
+</div>
+
+@code {
+    [Inject]
+    NavigationManager navigationManager { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    public void BtnOpenBox()
+    {
+        var boxId = Guid.NewGuid().ToString().Split("-").Last();
+        Console.WriteLine($"Opening Box {boxId}");
+        navigationManager.NavigateTo($"/b/{boxId}");
+    }
+}
